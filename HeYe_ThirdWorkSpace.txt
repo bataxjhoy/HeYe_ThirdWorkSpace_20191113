@@ -1,0 +1,129 @@
+
+MODULE MainModule 
+    PERS pose DstPosQuat; !! single pos + quat(orient)
+    PERS confdata CD:=[1,0,0,0];   ! conf data ,as : cf1,cf4,cf6,cfx
+    PERS extjoint EJ:=[9E+9,9E+9,9E+9,9E+9,9E+9,9E+9];     ! ext jiont
+    VAR robtarget pqRobtarget; 
+    VAR robtarget currentPos;
+    VAR robtarget  home:= [[2020,0,1800],[6.12303E-17,0,1,0],[0,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    VAR robtarget  tempPosLeft:=[[1400,-1300,1800],[5.65694372839885E-17,0.38268343236509,0.923879532511287,2.34318281388422E-17],[-1,0,0,0],[9E+9,9E+9,9E+9,9E+9,9E+9,9E+9]];
+    VAR robtarget  zoneUp:= [[0,-1600,1800],[4.32964E-17,0.707107,0.707107,-4.32964E-17],[-1,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+    
+    VAR robtarget  tempPosRight:=[[1400,1300,1800],[5.65694372839885E-17,-0.38268343236509,0.923879532511287,2.34318281388422E-17],[1,0,0,0],[9E+9,9E+9,9E+9,9E+9,9E+9,9E+9]];    
+    VAR robtarget  tranLineUp:=[[-86,2546,1800],[4.32964E-17,-0.707107,0.707107,4.32964E-17],[1,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+   
+    !VAR robtarget  putDownPose:=[[-523,2625,1140],[4.31449765321015E-17,-0.709570736536521,0.704634209963595,0],[1,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];!!!90.4 
+     VAR robtarget  putDownPose:=[[-528,2630,1140],[ 4.30690811153373E-17,-0.710799473872992,0.703394702810504,4.35224775999235E-17],[1,0,0,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];!!!90.6 
+   
+    VAR robtarget sp;
+    PERS num produceType:=4;
+    PROC goHome()!go back home
+        VelSet 80, 1500;
+        AccSet 50, 80;     
+        currentPos := CRobT( \Tool:=tool0 \WObj:=wobj0);
+        currentPos.trans.z :=1800;
+        MoveL currentPos, v600, z50, tool0;
+        MoveJ home, v1000, fine, tool0;
+        EXIT;
+    ENDPROC
+    
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!?TakeUpFromZoneToDesk?!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    PROC TakeUpFromZoneToDesk()
+        VelSet 100, 1500;
+        AccSet 50, 80;        
+        ConfL \Off;
+        
+        MoveJ tempPosLeft,v1500,z100,tool0;  
+        MoveJ zoneUp,v1000,z100,tool0;
+        
+            IF  DstPosQuat.trans.x =0 AND DstPosQuat.trans.y =0 THEN
+                Break;
+            ELSEIF  DstPosQuat.trans.x <-600 OR DstPosQuat.trans.x >600 OR DstPosQuat.trans.y <-2200 OR DstPosQuat.trans.y >-800 OR DstPosQuat.trans.z <280 OR DstPosQuat.trans.z >1100THEN
+                Break;
+           ELSE
+                pqRobtarget:=[DstPosQuat.trans,DstPosQuat.rot, CD,EJ];
+                MoveL Offs(pqRobtarget,0,0,150),v800,z100,tool0;! sponge up 
+               
+                !MoveL pqRobtarget,v200,fine,tool0;                   
+                SearchL \Stop, Local_IO_0_DI1,sp , pqRobtarget, v50, tool0;                   
+                WaitTime 0.1;
+                SetDO Local_IO_0_DO15, 1;!put up sponge
+                WaitTime 0.5;
+              
+!               pqRobtarget:=[DstPosQuat.trans,[0.06277,-0.70433,-0.70430,-0.06281], CD,EJ];
+!               MoveL Offs(pqRobtarget,0,0,400),v200,fine,tool0;
+                MoveL Offs(pqRobtarget,0,0,200),v50,fine,tool0;
+                WaitTime 0.5;                   
+                 
+            ENDIF 
+     
+        
+        MoveL zoneUp,v1000,z100,tool0;
+        MoveJ home,v1000,z100,tool0;
+        
+        MoveL Offs(home,0,0,-580) ,v1000,z10,tool0;        
+        MoveL Offs(home,0,0,-780) ,v400,fine,tool0;        
+        SetDO Local_IO_0_DO15, 0;!put down sponge
+        WaitTime 0.5;
+       
+        MoveJ home,v1500,z100,tool0;        
+        MoveJ tempPosLeft,v1500,z100,tool0;        
+        MoveJ zoneUp,v1500,fine,tool0;!for take photo
+        EXIT;
+    ENDPROC
+    
+    
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!??TakeUpFromDeskToTansLine??!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     PROC TakeUpFromDeskToTansLine()
+        VelSet 100, 1500;
+        AccSet 50, 80;        
+        ConfL \Off;
+        
+        MoveJ home, v1500, z50, tool0;
+        
+      
+            IF  DstPosQuat.trans.x =0 AND DstPosQuat.trans.y =0 THEN
+                Break;
+            ELSEIF  DstPosQuat.trans.x <1500 OR DstPosQuat.trans.x >2500 OR DstPosQuat.trans.y <-600 OR DstPosQuat.trans.y >600 OR DstPosQuat.trans.z <980 THEN
+                Break;
+           ELSE
+                pqRobtarget:=[DstPosQuat.trans,DstPosQuat.rot, CD,EJ];
+                MoveL Offs(pqRobtarget,0,0,150),v800,z100,tool0;! sponge up 
+
+                MoveL pqRobtarget,v200,fine,tool0;
+                WaitTime 0.1;
+                SetDO Local_IO_0_DO15, 1;!put up sponge
+                WaitTime 0.5;
+                MoveL Offs(pqRobtarget,0,0,200),v100,z100,tool0;!go up slow                                     
+            ENDIF           
+      
+        MoveL home,v800,z100,tool0;
+        MoveL tempPosRight,v1000,z100,tool0;
+        
+        MoveL tranLineUp,v1000,z100,tool0;
+        IF produceType=0 THEN
+            MoveL Offs(putDownPose,0,0,200),v800,fine,tool0;
+            MoveL putDownPose,v400,fine,tool0;!!produceType 900*950
+        ELSEIF produceType=1 THEN
+            MoveL Offs(putDownPose,0,-50,200),v800,fine,tool0;
+            MoveL Offs(putDownPose,0,-50,0),v400,fine,tool0;!!produceType 1000*950
+        ELSEIF produceType=2 THEN
+            MoveL Offs(putDownPose,275,0,200),v800,fine,tool0;
+            MoveL Offs(putDownPose,275,0,0),v400,fine,tool0;!!produceType 900*1500
+        ELSEIF produceType=3 THEN
+            MoveL Offs(putDownPose,275,-50,200),v800,fine,tool0;
+            MoveL Offs(putDownPose,275,-50,0),v400,fine,tool0;!!produceType 1000*1500
+        ELSEIF produceType=4 THEN
+            MoveL Offs(putDownPose,425,-50,200),v800,fine,tool0;
+            MoveL Offs(putDownPose,425,-50,0),v400,fine,tool0;!!produceType 1000*1800
+        ENDIF
+        
+        SetDO Local_IO_0_DO15, 0;!put down sponge
+        WaitTime 0.5;
+        MoveL tranLineUp,v1000,fine,tool0;
+        
+        goHome;!go back home
+        EXIT;
+     ENDPROC
+    
+ENDMODULE
